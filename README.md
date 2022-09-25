@@ -24,11 +24,11 @@ Creates Home Assistant Entities for each zone allowing control through the Home 
 * Keypad DIP switch override (Essentia D only)
 
 #### Services:
-* Paging On
-* Paging Off
-* Mute All Zones
-* Unmute All Zones
-* All Zones Off
+* Paging On (nuvo_simple.paging_on)
+* Paging Off (nuvo_simple.paging_off)
+* Mute All Zones (nuvo_simple.mute_all)
+* Unmute All Zones (nuvo_simple.unmute_all)
+* All Zones Off (nuvo_simple.all_off)
 
 ##### Paging service detail:
 These Nuvos do not natively support a page function, however you can configure a paging zone and volume levels for the service to switch the amp over to.  Calling the off service restores all zones to their previous state.
