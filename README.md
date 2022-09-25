@@ -55,6 +55,7 @@ Install using the Home Assistant Community Store [HACS](https://hacs.xyz).
 Once HACS is installed, go to the Integrations page and select the menu in the upper right hand corner and choose "Custom Repositories."
 
 In the repository field, enter: https://github.com/brmccrary/nuvo_simple
+
 In the Category field, select Integration. 
 
 The integration will now show up as nuvo_simple under integrations inside HACS.  Click on it and Download.
