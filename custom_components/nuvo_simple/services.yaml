@@ -1,0 +1,20 @@
+paging_on:
+  name: Paging On
+  description: Activate Paging feature for all zones.
+
+paging_off:
+  name: Paging Off
+  description: Deactivate Paging feature, restoring all zone to pre-paging state.
+
+mute_all:
+  name: Mute All
+  description: Mute all zones.
+
+unmute_all:
+  name: Unmute All
+  description: Unmute all zones.
+
+all_off:
+  name: All Off
+  description: Switch off all zones.
+

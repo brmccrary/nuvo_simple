@@ -1,0 +1,10 @@
+{
+  "name": "Nuvo (Not Grand or G) multi-zone amplifier (simple)",
+  "render_readme": true,
+  "country": "EN",
+  "domains": ["media_player", "number", "switch", "binary_sensor"],
+  "homeassistant": "2022.9.0",
+  "iot_class": ["Local Push"],
+  "zip_release": true,
+  "filename": "nuvo_simple.zip"
+}
