@@ -48,7 +48,7 @@ Connection to the Nuvo is by an RS232 serial port from the host running Home Ass
 
 ## Installing:
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 Install using the Home Assistant Community Store [HACS](https://hacs.xyz).
 
