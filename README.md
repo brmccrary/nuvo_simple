@@ -52,10 +52,13 @@ Connection to the Nuvo is by an RS232 serial port from the host running Home Ass
 
 Install using the Home Assistant Community Store [HACS](https://hacs.xyz).
 
-Once HACS is installed, search the available Integrations for **Nuvo (Not Grand or G) multi-zone amplifier (simple)** and install to make the integration available for install to Home Assistant.
+Once HACS is installed, go to the Integrations page and select the menu in the upper right hand corner and choose "Custom Repositories."
 
-In Home Assistant home page go to Configuration->Integrations->Add Integration-> Nuvo (Not Grand or G) multi-zone amplifier (simple)
+In the repository field, enter: https://github.com/brmccrary/nuvo_simple
+In the Category field, select Integration. 
 
+The integration will now show up as nuvo_simple under integrations inside HACS.  Click on it and Download.
+ 
 ## Configuration:
 
 Configuration must be done through configuration.yaml, no GUI option is available for now.
