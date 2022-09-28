@@ -190,7 +190,7 @@ views:
                   name: Keypad Override
                   icon: mdi:cogs
                   show_state: true
-
+```
 This configuration will display the card below (except with your own theme, which is probably different than mine), with the EQ settings card toggled by tapping on the media player, in any area not containing a control:
 
 ![Lovelace](images/lovelaceui.png)
