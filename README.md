@@ -93,3 +93,104 @@ logger:
     custom_components.nuvo_simple: debug
     nuvo_simple: debug
 ~~~
+
+## Lovelace Frontend Configuration
+I really liked the way [sproket-9](https://github.com/sprocket-9) created the idea of using the [mini-media-player](https://github.com/kalkih/mini-media-player) and I think it works great for the "simple" Nuvo amps as well.  Here is his example, except I only added one zone, but this should be enough to get someone started:
+
+Everything in this section is optional and shows a heavily opinionated method of configuring Lovelace to display the Nuvo entities.  While it may not be to everyones taste, it should at least give some inspiration for configuration possibilites.
+
+The core [Media Player](https://www.home-assistant.io/integrations/media_player/) integration (and therefore any Lovelace media control card representing a media player entity) does not provide a way to control a media device's EQ settings.  Each EQ setting is modeled using the [Number](https://www.home-assistant.io/integrations/number/) integration.  The advantage of this is the ability to use the native number ranges exposed by the Nuvo for each control rather than a card showing a generic 0-X scale.
+
+While Home Assistant will auto-create Lovelace media control and number cards for each Nuvo entity, a more polished look can be achieved using third-party cards [mini-media-player](https://github.com/kalkih/mini-media-player) and [lovelace-slider-entity-row](https://github.com/thomasloven/lovelace-slider-entity-row), both cards are installable through [HACS](https://hacs.xyz).
+
+This example Lovelace configuration displays the EQ settings in a [Conditional](https://www.home-assistant.io/lovelace/conditional/) card that is only displayed when the zone is switched on and an input_boolean entity is True.  This input_boolean is toggled by tapping the mini-media-player representing the zone.  In order to achieve this, an additional input_boolean entity per-zone needs manually created (it's purely to control the frontend EQ Conditional card, it doesn't represent anything on the Nuvo itself).
+
+e.g. In configuration.yaml:
+
+```yaml
+input_boolean:
+  eq_office:
+    name: Office EQ
+    initial: off
+```
+
+Will create the entity:
+```
+input_boolean.eq_office
+```
+
+As shown the yaml section below, the [tap action](https://github.com/kalkih/mini-media-player#action-object-options) on each mini-media-player will call the input_boolean.toggle service.
+
+Example section in ui-lovelace.yaml:
+
+```yaml
+
+views:
+  - title: MusicZones
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: entities
+            entities:
+              - type: custom:mini-media-player
+                entity: media_player.office
+                group: true
+                hide:
+                  controls: false
+                  info: false
+                  power_state: false
+                  play_pause: true
+                  prev: true
+                  next: true
+                icon: mdi:speaker-wireless
+                volume_stateless: true
+                tap_action:
+                  action: call-service
+                  service: input_boolean.toggle
+                  service_data:
+                    entity_id: input_boolean.eq_office
+              - type: custom:slider-entity-row
+                entity: media_player.office
+                full_row: true
+                step: 1
+                hide_state: false
+                hide_when_off: true
+          - type: conditional
+            conditions:
+              - entity: media_player.office
+                state: 'on'
+              - entity: input_boolean.eq_office
+                state: 'on'
+            card:
+              type: entities
+              entities:
+                - type: custom:slider-entity-row
+                  entity: number.office_bass
+                  name: Bass
+                  icon: mdi:music-clef-bass
+                  hide_state: false
+                  hide_when_off: true
+                  full_row: false
+                - type: custom:slider-entity-row
+                  entity: number.office_treble
+                  full_row: false
+                  name: Treble
+                  icon: mdi:music-clef-treble
+                  hide_state: false
+                  hide_when_off: true
+                - entity: switch.office_volume_reset
+                  name: Volume Reset
+                  icon: mdi:volume-low
+                  show_state: true
+                - entity: switch.office_source_group
+                  name: Source Grouping
+                  icon: mdi:speaker-multiple
+                  show_state: true
+                - entity: binary_sensor.office_override
+                  name: Keypad Override
+                  icon: mdi:cogs
+                  show_state: true
+
+This configuration will display the card below (except with your own theme, which is probably different than mine), with the EQ settings card toggled by tapping on the media player, in any area not containing a control:
+
+![Lovelace](images/lovelaceui.png)
