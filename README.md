@@ -15,6 +15,7 @@ Creates Home Assistant Entities for each zone allowing control through the Home 
 #### Number Entities:
 * Bass control
 * Treble control
+* Volume offset (for speaker grouping)
 
 #### Switch Entities:
 * Grouping
@@ -30,8 +31,24 @@ Creates Home Assistant Entities for each zone allowing control through the Home 
 * Unmute All Zones (nuvo_simple.unmute_all)
 * All Zones Off (nuvo_simple.all_off)
 
+##### Speaker group management:
+The media player entities support join/unjoin to make speaker groups.  This has only been tested using the Mini Media Player, but ideally should support other methods as well.
+
+* Each entity is it's own master.  
+* There is an extra zone called "Group Controller", essentially zone 0, or a "virtual zone."
+* Any zone/entity can be added to the Group Controller if keypad control is not needed/desired.
+* Any zone/entity can only be added to another group once.  Adding it to the second group removes it from the first.
+* Zone/entity can not have it's own group members if it's a slave in another group.
+* Volume Offset controls the offset in that zone/entity if it is a slave in a group.
+* Volume Offset is percentage of total volume.
+
+** If you are not using the zone expander or have extra unused zones, these keypads can still be used!  This is very nice if you do not have the expander, or just have an unused zone.  Simply setup a keypad for zone 7-12 and assign it in the configuation file.  Then you can essentially have a keypad that is the same as the "Group Controller."
+
 ##### Paging service detail:
 These Nuvos do not natively support a page function, however you can configure a paging zone and volume levels for the service to switch the amp over to.  Calling the off service restores all zones to their previous state.
+
+##### All Off Recall detail:
+If this is enabled, pressing the All Off button on the keypad a second time after all zones have been turned off will turn back on the previously turned off zones.  This works with the keypad only.
 
 ## Known issues:
 
@@ -68,15 +85,18 @@ Example:
 ~~~
 nuvo_simple:
   port: /dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0
-  baud: 9600      # Optional, defaults to 9600
-  page_source: 3  # Optional, defaults to source 6
-  page_volume: 35 # Optional, defaults to -40.  Volume in DB without the minus sign.  1 is loudest and 78 is muted.
+  baud: 9600          # Optional, defaults to 9600
+  page_source: 6      # Optional, defaults to source 6
+  page_volume: 35     # Optional, defaults to 35%.  Volume is in percentage.  0 is muted and 100 is loudest.
+  min_offset: -20     # Optional, minimum volume offset percentage for offset number entity.  Defaults to -20
+  max_offset: 20      # Optional, maximum volume offset percentage for offset number entity.  Defaults to 20
+  all_off_recall: yes # Optional, enables "all off recall."  Defaults to no.
   zones:
     1:
       name: Office
     2:
       name: Very Noisy Room
-      zone_page_volume: 10  # Optional, if specified will override page_volume above for that zone only.
+      zone_page_volume: 95  # Optional, if specified will override page_volume above for that zone only.
   sources:
     1:
       name: SiriusXM
