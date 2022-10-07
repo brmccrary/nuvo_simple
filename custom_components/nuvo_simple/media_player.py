@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.media_player import (
     DOMAIN, PLATFORM_SCHEMA, SUPPORT_SELECT_SOURCE,
     SUPPORT_TURN_OFF, SUPPORT_TURN_ON, SUPPORT_VOLUME_MUTE, SUPPORT_VOLUME_SET,
-    SUPPORT_VOLUME_STEP, MediaPlayerEntity)
+    SUPPORT_VOLUME_STEP, SUPPORT_GROUPING, MediaPlayerEntity)
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState, \
     SOURCE_IMPORT
 from homeassistant.const import (
@@ -34,7 +34,8 @@ _LOGGER = logging.getLogger(__name__)
 
 SUPPORT_NUVO = SUPPORT_VOLUME_MUTE | SUPPORT_VOLUME_SET | \
                     SUPPORT_VOLUME_STEP | SUPPORT_TURN_ON | \
-                    SUPPORT_TURN_OFF | SUPPORT_SELECT_SOURCE
+                    SUPPORT_TURN_OFF | SUPPORT_SELECT_SOURCE | \
+                    SUPPORT_GROUPING
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_PORT): cv.string,
@@ -46,6 +47,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     sources = hass.data[COMPONENT_DOMAIN][CONF_SOURCES]
     zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
     hass.data[DATA_NUVO][DOMAIN] = []
+    hass.data[DATA_NUVO][DOMAIN].append(NuvoZone(hass,
+        NUVO, sources, 0, 'Group Controller'))
 
     for zone_id, extra in zones.items():
         _LOGGER.info("Adding media player zone %d - %s", zone_id, \
@@ -80,6 +83,10 @@ class NuvoZone(MediaPlayerEntity):
         if not state:
             return False
         self._state = STATE_ON if state.power else STATE_OFF
+        if state.zonegroup_members != []:
+            self._group_members = state.zonegroup_members
+        else:
+            self._group_members = None
         self._volume = state.volume
         self._mute = state.mute
         try:
@@ -88,8 +95,17 @@ class NuvoZone(MediaPlayerEntity):
             self._source = 'Unknown'
 
     async def async_added_to_hass(self) -> None:
-        self._nuvo.add_callback(self._update_callback, self._zone_id, 'media')
+        self._nuvo.add_callback(self._update_callback, self._zone_id, self.entity_id, 'media')
         self.update()
+
+    def join_players(self, group_members: list[str]):
+        _LOGGER.debug('Zone %s adding %s to group', self._zone_id, group_members)
+        self._nuvo.join_players(self._zone_id, group_members)
+
+    def unjoin_player(self) -> None:
+        _LOGGER.debug('Zone %s unjoin from all groups', self._zone_id)
+        self._nuvo.unjoin_player(self._zone_id)
+        return True
 
     @callback
     def _update_callback(self):
@@ -122,21 +138,24 @@ class NuvoZone(MediaPlayerEntity):
         return self._source_names
 
     @property
+    def group_members(self):
+        """List of group members."""
+        return self._group_members
+
+    @property
     def volume_level(self):
         """Volume level of the media player (0..1)."""
         if self._volume is None:
             return None
-        return (( int(self._volume) + 78) / 78)
+        if int(self._volume) > -24:
+            return (( int(self._volume) + 24) / 24 / 2 +.5)
+        else:
+            return (( int(self._volume) + 78) / 54 / 2)
 
     @property
     def is_volume_muted(self):
         """Boolean if volume is currently muted."""
         return self._mute
-
-    @property
-    def media_title(self):
-        """Return the current source as medial title."""
-        return self._source
 
     @property
     def source(self):
@@ -149,6 +168,7 @@ class NuvoZone(MediaPlayerEntity):
         return SUPPORT_NUVO
 
     def page (self, page_source, page_zones, page_volume):
+        """Call paging service."""
         self._nuvo.page(page_source, page_zones, page_volume)
 
     def restore(self, page_source, page_zones):
@@ -176,7 +196,10 @@ class NuvoZone(MediaPlayerEntity):
 
     def set_volume_level(self, volume):
         """Set volume level, range 0..1."""
-        self._nuvo.set_volume(self._zone_id, int( (volume * 78) - 78) )
+        if volume > .5:
+            self._nuvo.set_volume(self._zone_id, int((volume * 48) - 48))
+        else:
+            self._nuvo.set_volume(self._zone_id, int((volume * 108) - 78))
 
     def volume_up(self):
         """Volume up the media player."""

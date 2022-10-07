@@ -31,21 +31,27 @@ CONF_PORT = "port"
 CONF_BAUD = "baud"
 CONF_ZONES = "zones"
 CONF_SOURCES = "sources"
+CONF_MIN_OFFSET = "min_offset"
+CONF_MAX_OFFSET = "max_offset"
+CONF_ALL_OFF_RECALL = "all_off_recall"
 CONF_NUVOSYNC = "nuvosync"
 MODEL = "model"
 
 DEFAULT_BAUD = "9600"
 DEFAULT_PAGE_SOURCE = "6"
-DEFAULT_PAGE_VOLUME = "50"
+DEFAULT_PAGE_VOLUME = "35"
+DEFAULT_ALL_OFF_RECALL = "no"
+DEFAULT_MIN_OFFSET = "-20"
+DEFAULT_MAX_OFFSET = "20"
 
-SERVICE_PAGE_ON = 'paging_on'
-SERVICE_PAGE_OFF = 'paging_off'
-SERVICE_MUTE = 'mute_all'
-SERVICE_UNMUTE = 'unmute_all'
-SERVICE_ALL_OFF = 'all_off'
+SERVICE_PAGE_ON = "paging_on"
+SERVICE_PAGE_OFF = "paging_off"
+SERVICE_MUTE = "mute_all"
+SERVICE_UNMUTE = "unmute_all"
+SERVICE_ALL_OFF = "all_off"
 
-PAGE_ZONES = 'page_zones'
-ZONE_PAGE_VOLUME = 'zone_page_volume'
+PAGE_ZONES = "page_zones"
+ZONE_PAGE_VOLUME = "zone_page_volume"
 
 ZONE_SCHEMA = vol.Schema({
     vol.Required(CONF_NAME): cv.string,
@@ -71,6 +77,9 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_BAUD, default=DEFAULT_BAUD): cv.string,
                 vol.Optional(CONF_PAGE_SOURCE, default=DEFAULT_PAGE_SOURCE): cv.string,
                 vol.Optional(CONF_PAGE_VOLUME, default=DEFAULT_PAGE_VOLUME): cv.string,
+                vol.Optional(CONF_ALL_OFF_RECALL, default=DEFAULT_ALL_OFF_RECALL): cv.boolean,
+                vol.Optional(CONF_MIN_OFFSET, default=DEFAULT_MIN_OFFSET): cv.string,
+                vol.Optional(CONF_MAX_OFFSET, default=DEFAULT_MAX_OFFSET): cv.string,
                 vol.Required(CONF_ZONES): vol.Schema({ZONE_IDS: ZONE_SCHEMA}),
                 vol.Required(CONF_SOURCES): vol.Schema({SOURCE_IDS: SOURCE_SCHEMA}),
             }
@@ -89,12 +98,15 @@ def setup(hass, config):
     hass.data[DOMAIN] = {}
     hass.data[DATA_NUVO][PAGE_ZONES] = []
     hass.data[DATA_NUVO][ZONE_PAGE_VOLUME] = []
+    hass.data[DATA_NUVO][CONF_MIN_OFFSET] = conf.get(CONF_MIN_OFFSET)
+    hass.data[DATA_NUVO][CONF_MAX_OFFSET] = conf.get(CONF_MAX_OFFSET)
     port = conf.get(CONF_PORT)
     baud = conf.get(CONF_BAUD)
+    all_off_recall = conf.get(CONF_ALL_OFF_RECALL)
 
     try:
         global NUVO
-        NUVO = get_nuvo(port, baud)
+        NUVO = get_nuvo(port, baud, all_off_recall)
     except SerialException:
         _LOGGER.error("Error opening serial port")
         return False
@@ -110,6 +122,8 @@ def setup(hass, config):
                in conf[CONF_SOURCES].items()}
     hass.data[DOMAIN][CONF_PAGE_VOLUME] = int(conf.get(CONF_PAGE_VOLUME))
     hass.data[DOMAIN][CONF_PAGE_SOURCE] = int(conf.get(CONF_PAGE_SOURCE))
+    hass.data[DOMAIN][CONF_MIN_OFFSET] = int(conf.get(CONF_MIN_OFFSET))
+    hass.data[DOMAIN][CONF_MAX_OFFSET] = int(conf.get(CONF_MAX_OFFSET))
     hass.data[DOMAIN][CONF_SOURCES] = sources
     hass.data[DOMAIN][CONF_ZONES] = conf[CONF_ZONES]
     hass.data[DOMAIN][MODEL] = model
@@ -122,11 +136,11 @@ def setup(hass, config):
         hass.data[DATA_NUVO][PAGE_ZONES].append(zone_id)
         try:
             hass.data[DATA_NUVO][ZONE_PAGE_VOLUME].append(extra[CONF_ZONE_PAGE_VOLUME])
-            _LOGGER.info("Adding page zone %d with specific volume %s", \
+            _LOGGER.info("Adding page zone %d with specific volume %s%%", \
                          zone_id, extra[CONF_ZONE_PAGE_VOLUME])
         except:
             hass.data[DATA_NUVO][ZONE_PAGE_VOLUME].append(hass.data[DATA_NUVO][CONF_PAGE_VOLUME])
-            _LOGGER.info("Adding page zone %d with default volume %s", \
+            _LOGGER.info("Adding page zone %d with default volume %s%%", \
                          zone_id, hass.data[DATA_NUVO][CONF_PAGE_VOLUME])
 
     for platform in PLATFORMS:
@@ -134,7 +148,7 @@ def setup(hass, config):
 
     def service_handle(service):
         """Handle for services."""
-        _LOGGER.info("Nuvo service handler called.")
+        _LOGGER.debug("Nuvo service handler called.")
         if service.service == SERVICE_PAGE_OFF:
             _LOGGER.info("Paging off service called.")
             NUVO.page_off(page_source, page_zones)

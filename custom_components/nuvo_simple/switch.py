@@ -58,7 +58,7 @@ class NuvoGroup(SwitchEntity):
         self._name = zone_name
 
     async def async_added_to_hass(self) -> None:
-        self._nuvo.add_callback(self._update_callback, self._zone_id, 'settings')
+        self._nuvo.add_callback(self._update_callback, self._zone_id, self._name, 'settings')
         self.update()
 
     @callback
@@ -109,7 +109,7 @@ class NuvoVolumeReset(SwitchEntity):
         self._treble = None
 
     async def async_added_to_hass(self) -> None:
-        self._nuvo.add_callback(self._update_callback, self._zone_id, 'settings')
+        self._nuvo.add_callback(self._update_callback, self._zone_id, self._name, 'settings')
 
     @callback
     def _update_callback(self):
