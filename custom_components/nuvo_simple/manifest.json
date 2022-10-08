@@ -5,7 +5,7 @@
   "issue_tracker": "https://github.com/brmcc/nuvo-simple/issues",
   "codeowners": ["@brmcc"],
   "dependencies": ["http"],
-  "requirements": ["pyserial>=3.4", "nuvo-simple==1.1.1"],
+  "requirements": ["pyserial>=3.4", "nuvo-simple==1.1.2"],
   "version": "v1.1.1",
   "iot_class": "local_push"
 }
