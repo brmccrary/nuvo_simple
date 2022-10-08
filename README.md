@@ -19,6 +19,7 @@ Creates Home Assistant Entities for each zone allowing control through the Home 
 
 #### Switch Entities:
 * Grouping
+* Keypad Lock
 * Volume Reset (Essentia D only)
 
 #### Binary_sensor Entity:
@@ -44,10 +45,10 @@ The media player entities support join/unjoin to make speaker groups.  This has 
 
 ** If you are not using the zone expander or have extra unused zones, these keypads can still be used!  This is very nice if you do not have the expander, or just have an unused zone.  Simply setup a keypad for zone 7-12 and assign it in the configuation file.  Then you can essentially have a keypad that is the same as the "Group Controller."
 
-##### Paging service detail:
+##### Paging service:
 These Nuvos do not natively support a page function, however you can configure a paging zone and volume levels for the service to switch the amp over to.  Calling the off service restores all zones to their previous state.
 
-##### All Off Recall detail:
+##### All Off Recall:
 If this is enabled, pressing the All Off button on the keypad a second time after all zones have been turned off will turn back on the previously turned off zones.  This works with the keypad only.
 
 ## Known issues:
@@ -55,6 +56,8 @@ If this is enabled, pressing the All Off button on the keypad a second time afte
 Warning in the logs from Home Assistant: "Detected blocking call to sleep inside the event loop."  I know this is due to the fact the serial port is used, but have not researched in further.  In my experience this does not cause any problems, and the switches usually will be toggled very litte.
 
 Paging service turns on the last played zone for a small amount of time.  The Nuvo does not allow source changes when powered down, and even when powering on, will not accept a source change for a very short amount of time.  Therefore, if the last zone playing was zone 1, for example, and your paging zone is 6, zone 1 will play for a fraction of a second when the Paging on service is called until the Nuvo can be switched to the paging zone.  I don't see a way around this.
+
+Keypad lock does not know if the keypad is locked upon startup as there is no way to query the current status from the Nuvo.
 
 Only support for Essentia D and Simplese (untested) is provided currently.  I think this could be adapted to easily support the other simplier Nuvo amps however.
 
@@ -103,6 +106,53 @@ nuvo_simple:
     2:
       name: Chromecast Audio
 ~~~
+## How to use when the serial port is on another machine:
+
+You can use the program ncat, available on most Linux distros, as a way to access the Nuvo across the LAN if it's on a different machine.
+Here is an example of how to set this up, using port 59001 as the connection port.  Feel free to change to meet your individual needs.
+
+After installing ncat, create a file /usr/local/bin/nuvonet with the following, putting your actual serial port device in the PORT setting:
+~~~
+#!/bin/bash
+export PORT=<your serial port goes here>
+stty -F $PORT cs8 -cstopb -parenb -crtscts 9600
+ncat --listen --keep-open localhost 59001 < $PORT > $PORT
+~~~
+Make it executable by running:
+~~~
+chmod 755 /usr/local/bin/nuvonet
+~~~
+If using systemd, you can make it start automatically by making a file in /etc/systemd/system/nuvonet.service
+~~~
+# systemd configuration for nuvonet.service
+
+[Unit]
+Description=Nuvo Serial to Network
+Requires=time-sync.target
+After=time-sync.target
+
+StartLimitIntervalSec=100
+StartLimitBurst=5
+
+[Service]
+ExecStart=/usr/local/bin/nuvonet
+ExecReload=/bin/kill -HUP $MAINPID
+Type=simple
+
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+~~~
+Run the following to start the new "nuvonet" service:
+~~~
+systemctl enable nuvonet
+systemctl start nuvonet
+~~~
+
+**IMPORTANT**  This has no security at all, so anyone could connect, in this case, to port 59001 and control your Nuvo.  Do not expose this port to the outside.  
+
 ## Troubleshooting:
 
 Add the following to configuration.yaml to enable debugging:
