@@ -45,6 +45,8 @@ async def async_setup_platform(
         if hass.data[DATA_NUVO][MODEL] == 'ESSENTIA_D':
             hass.data[DATA_NUVO][DOMAIN].append(NuvoVolumeReset(
                 NUVO, zone_id, extra[CONF_NAME]))
+        hass.data[DATA_NUVO][DOMAIN].append(NuvoKeypadLock(
+            NUVO, zone_id, extra[CONF_NAME]))
 
     async_add_entities(hass.data[DATA_NUVO][DOMAIN], True)
 
@@ -146,3 +148,53 @@ class NuvoVolumeReset(SwitchEntity):
     async def async_turn_off(self):
         """Send the off command."""
         self._nuvo.set_volume_reset(self._zone_id, False)
+
+class NuvoKeypadLock(SwitchEntity):
+    """Representation of a Nuvo amplifier zone settings."""
+
+    def __init__(self, nuvo, zone_id, zone_name):
+        """Initialize new zone."""
+        self._nuvo = nuvo
+        self._zone_id = zone_id
+        self._name = zone_name
+
+        self._keypad_lock = None
+
+    async def async_added_to_hass(self) -> None:
+        self._nuvo.add_callback(self._update_callback, self._zone_id, self._name, 'settings')
+
+    @callback
+    def _update_callback(self):
+        _LOGGER.debug('Zone %s settings (keypad lock) update called', self._zone_id)
+        self.async_schedule_update_ha_state(True)
+
+    def update(self):
+        """Retrieve latest state."""
+        state = self._nuvo.zoneset_status(self._zone_id)
+        if not state:
+            self._keypad_lock = None
+            return None
+        else:
+            self._keypad_lock = state.keypad_lock
+
+    @property
+    def should_poll(self):
+        """Disable polling."""
+        return False
+
+    @property
+    def is_on(self):
+        return self._keypad_lock
+
+    @property
+    def name(self):
+        """Return the name of the zone."""
+        return f'{self._name} keypad lock'
+
+    async def async_turn_on(self):
+        """Send the on command."""
+        self._nuvo.set_keypad_lock(self._zone_id, True)
+
+    async def async_turn_off(self):
+        """Send the off command."""
+        self._nuvo.set_keypad_lock(self._zone_id, False)
