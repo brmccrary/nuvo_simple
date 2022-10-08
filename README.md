@@ -150,6 +150,10 @@ Run the following to start the new "nuvonet" service:
 systemctl enable nuvonet
 systemctl start nuvonet
 ~~~
+Change the port setting in configuration.yaml to:
+~~~
+port: socket://<yournuvohost>:59001
+~~~
 
 **IMPORTANT**  This has no security at all, so anyone could connect, in this case, to port 59001 and control your Nuvo.  Do not expose this port to the outside.  
 
