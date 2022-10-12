@@ -115,7 +115,7 @@ After installing ncat, create a file /usr/local/bin/nuvonet with the following, 
 ~~~
 #!/bin/bash
 export PORT=<your serial port goes here>
-stty -F $PORT cs8 -cstopb -parenb -crtscts 9600
+stty -F $PORT cs8 -cstopb -parenb -crtscts raw 9600
 ncat --listen --keep-open 59001 < $PORT > $PORT
 ~~~
 Make it executable by running:
