@@ -1,10 +1,15 @@
 # nuvo_simple
-Home Assistant custom component integration to control the basic models Nuvo whole home amplifiers using a serial connection.
-This is derived from code published by ejonesnospam.  For the Grand Concerto / Essentia G see sproket-9's integration [nuvo_serial](https://raw.githubusercontent.com/sprocket-9/hacs-nuvo-serial)
+Home Assistant custom component integration to control the basic Nuvo whole home amplifiers using a serial (RS232) connection.
+
+Currently supports Essentia D, Simplese (untested), and Concerto (untested).
+
+For the Grand Concerto / Essentia G see sproket-9's integration [nuvo_serial](https://raw.githubusercontent.com/sprocket-9/hacs-nuvo-serial)
+
+Portions derived from code published by ejonesnospam.
 
 ## What this Integration does:
 
-Creates Home Assistant Entities for each zone allowing control through the Home Assistant web interface.
+Creates Home Assistant Entities for each zone allowing control through Home Assistant.
 
 #### Media Player Entity:
 * On/Off
@@ -15,15 +20,16 @@ Creates Home Assistant Entities for each zone allowing control through the Home 
 #### Number Entities:
 * Bass control
 * Treble control
-* Volume offset (for speaker grouping)
+* Balance control (Concerto only)
+* Volume offset (for speaker groups)
 
 #### Switch Entities:
-* Grouping
-* Keypad Lock
-* Volume Reset (Essentia D only)
+* Source Grouping (Essentia and Simplese only)
+* Keypad Lock (Essentia and Simplese only)
+* Volume Reset (Essentia only)
 
 #### Binary_sensor Entity:
-* Keypad DIP switch override (Essentia D only)
+* Keypad DIP switch override (Essentia only)
 
 #### Services:
 * Paging On (nuvo_simple.paging_on)
@@ -43,7 +49,7 @@ The media player entities support join/unjoin to make speaker groups.  This has 
 * Volume Offset controls the offset in that zone/entity if it is a slave in a group.
 * Volume Offset is percentage of total volume.
 
-** If you are not using the zone expander or have extra unused zones, these keypads can still be used!  This is very nice if you do not have the expander, or just have an unused zone.  Simply setup a keypad for zone 7-12 and assign it in the configuation file.  Then you can essentially have a keypad that is the same as the "Group Controller."
+** If you are not using the zone expander or have extra unused zones, these keypads can still be used!  This is very nice if you do not have the expander, or just have an unused zone.  Simply setup a keypad for zone 7-12 and assign it in the configuration file.  Then you can essentially have a keypad that is the same as the "Group Controller."
 
 ##### Paging service:
 These Nuvos do not natively support a page function, however you can configure a paging zone and volume levels for the service to switch the amp over to.  Calling the off service restores all zones to their previous state.
@@ -58,8 +64,6 @@ Warning in the logs from Home Assistant: "Detected blocking call to sleep inside
 Paging service turns on the last played zone for a small amount of time.  The Nuvo does not allow source changes when powered down, and even when powering on, will not accept a source change for a very short amount of time.  Therefore, if the last zone playing was zone 1, for example, and your paging zone is 6, zone 1 will play for a fraction of a second when the Paging on service is called until the Nuvo can be switched to the paging zone.  I don't see a way around this.
 
 Keypad lock does not know if the keypad is locked upon startup as there is no way to query the current status from the Nuvo.
-
-Only support for Essentia D and Simplese (untested) is provided currently.  I think this could be adapted to easily support the other simplier Nuvo amps however.
 
 The Simplese is untested but I expect it to work except the bass and treble controls may not.  There is conflicting information in every protocol guide I've seen so someone that owns one will need to send a debug log if it does not work.
 
