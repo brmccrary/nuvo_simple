@@ -59,13 +59,9 @@ If this is enabled, pressing the All Off button on the keypad a second time afte
 
 ## Known issues:
 
-Warning in the logs from Home Assistant: "Detected blocking call to sleep inside the event loop."  I know this is due to the fact the serial port is used, but have not researched in further.  In my experience this does not cause any problems, and the switches usually will be toggled very litte.
-
 Paging service turns on the last played zone for a small amount of time.  The Nuvo does not allow source changes when powered down, and even when powering on, will not accept a source change for a very short amount of time.  Therefore, if the last zone playing was zone 1, for example, and your paging zone is 6, zone 1 will play for a fraction of a second when the Paging on service is called until the Nuvo can be switched to the paging zone.  I don't see a way around this.
 
 Keypad lock does not know if the keypad is locked upon startup as there is no way to query the current status from the Nuvo.
-
-The Simplese is untested but I expect it to work except the bass and treble controls may not.  There is conflicting information in every protocol guide I've seen so someone that owns one will need to send a debug log if it does not work.
 
 ## Connecting to the Nuvo:
 Connection to the Nuvo is by an RS232 serial port from the host running Home Assistant to the amplifier's serial port, either by using a USB to RS232 converter, or by using a RS232 port directly on the host.  If using a USB to RS232 converter, I would recommend using the full name instead of "/dev/ttyUSB0" as if you have more than one serial port that device can change.  You can find the full name by looking in /dev/serial/by-id.  For instance, "/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0".
@@ -199,75 +195,92 @@ input_boolean.eq_office
 
 As shown the yaml section below, the [tap action](https://github.com/kalkih/mini-media-player#action-object-options) on each mini-media-player will call the input_boolean.toggle service.
 
-Example section in ui-lovelace.yaml:
+Example section of code in a Vertical Stack Card:
 
 ```yaml
-
-views:
-  - title: MusicZones
-    cards:
-      - type: vertical-stack
-        cards:
-          - type: entities
-            entities:
-              - type: custom:mini-media-player
-                entity: media_player.office
-                group: true
-                hide:
-                  controls: false
-                  info: false
-                  power_state: false
-                  play_pause: true
-                  prev: true
-                  next: true
-                icon: mdi:speaker-wireless
-                volume_stateless: true
-                tap_action:
-                  action: call-service
-                  service: input_boolean.toggle
-                  service_data:
-                    entity_id: input_boolean.eq_office
-              - type: custom:slider-entity-row
-                entity: media_player.office
-                full_row: true
-                step: 1
-                hide_state: false
-                hide_when_off: true
-          - type: conditional
-            conditions:
-              - entity: media_player.office
-                state: 'on'
-              - entity: input_boolean.eq_office
-                state: 'on'
-            card:
-              type: entities
-              entities:
-                - type: custom:slider-entity-row
-                  entity: number.office_bass
-                  name: Bass
-                  icon: mdi:music-clef-bass
-                  hide_state: false
-                  hide_when_off: true
-                  full_row: false
-                - type: custom:slider-entity-row
-                  entity: number.office_treble
-                  full_row: false
-                  name: Treble
-                  icon: mdi:music-clef-treble
-                  hide_state: false
-                  hide_when_off: true
-                - entity: switch.office_volume_reset
-                  name: Volume Reset
-                  icon: mdi:volume-low
-                  show_state: true
-                - entity: switch.office_source_group
-                  name: Source Grouping
-                  icon: mdi:speaker-multiple
-                  show_state: true
-                - entity: binary_sensor.office_override
-                  name: Keypad Override
-                  icon: mdi:cogs
-                  show_state: true
+type: vertical-stack
+cards:
+  - type: entities
+    entities:
+      - type: custom:mini-media-player
+        entity: media_player.office
+        volume_stateless: true
+        group: true
+        hide:
+          controls: false
+          info: false
+          power_state: false
+          play_pause: true
+          prev: true
+          next: true
+        speaker_group:
+          platform: media_player
+          show_group_count: true
+          entities:
+            - entity_id: media_player.computer_room
+              name: CR
+            - entity_id: media_player.lower_hallway
+              name: Lower Hall
+            - entity_id: media_player.upper_hallway
+              name: Upper Hall
+        icon: mdi:speaker-wireless
+        tap_action:
+          action: call-service
+          service: input_boolean.toggle
+          service_data:
+            entity_id: input_boolean.eq_office
+      - type: custom:slider-entity-row
+        entity: media_player.office
+        full_row: true
+        step: 1
+        hide_state: false
+        hide_when_off: true
+  - type: conditional
+    conditions:
+      - entity: media_player.office
+        state: 'on'
+      - entity: input_boolean.eq_office
+        state: 'on'
+    card:
+      type: entities
+      entities:
+        - type: custom:slider-entity-row
+          entity: number.office_bass
+          name: Bass
+          icon: mdi:music-clef-bass
+          hide_state: false
+          hide_when_off: true
+          full_row: false
+        - type: custom:slider-entity-row
+          entity: number.office_treble
+          full_row: false
+          name: Treble
+          icon: mdi:music-clef-treble
+          hide_state: false
+          hide_when_off: true
+        - type: custom:slider-entity-row
+          entity: number.office_volume_offset
+          name: Offset
+          icon: mdi:volume-equal
+          full_row: false
+          hide_state: false
+          hide_when_off: true
+        - entity: switch.office_volume_reset
+          name: Volume Reset
+          icon: mdi:volume-low
+          show_state: true
+        - entity: switch.office_source_group
+          name: Source Grouping
+          icon: mdi:speaker-multiple
+          show_state: true
+        - entity: switch.office_keypad_lock
+          name: Keypad Lock
+          icon: mdi:lock
+          show_state: true
+        - entity: binary_sensor.office_override
+          name: Keypad Override
+          icon: mdi:cogs
+          show_state: true
 ```
 This configuration will display the card below (except with your own theme, which is probably different than mine), with the EQ settings card toggled by tapping on the media player, in any area not containing a control:
 
