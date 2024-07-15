@@ -5,8 +5,8 @@
   "dependencies": ["http", "zeroconf"],
   "documentation": "https://github.com/brmccrary/nuvo-simple",
   "integration_type": "hub",
-  "iot_class": "local_push"
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/brmccrary/nuvo-simple/issues",
   "requirements": ["pyserial>=3.4", "nuvo-simple==1.3.1"],
-  "version": "v1.3.1",
+  "version": "v1.3.1"
 }
