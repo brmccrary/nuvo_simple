@@ -3,7 +3,6 @@
   "render_readme": true,
   "country": "ALL",
   "homeassistant": "2022.9.0",
-  "iot_class": ["Local Push"],
   "zip_release": true,
   "filename": "nuvo_simple.zip"
 }
