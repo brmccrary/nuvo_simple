@@ -4,7 +4,7 @@
   "documentation": "https://github.com/brmccrary/nuvo-simple",
   "issue_tracker": "https://github.com/brmccrary/nuvo-simple/issues",
   "codeowners": ["@brmccrary"],
-  "dependencies": ["http"],
+  "dependencies": ["http", "zeroconf"],
   "integration_type": "hub",
   "requirements": ["pyserial>=3.4", "nuvo-simple==1.3.1"],
   "version": "v1.3.1",
