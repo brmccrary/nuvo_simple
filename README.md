@@ -1,7 +1,7 @@
 # nuvo_simple
 Home Assistant custom component integration to control the basic Nuvo whole home amplifiers using a serial (RS232) connection.
 
-Currently supports Essentia D, Simplese (untested), and Concerto (untested).
+Currently supports Concerto, Essentia D, and Simplese (untested).
 
 For the Grand Concerto / Essentia G see sproket-9's integration [nuvo_serial](https://raw.githubusercontent.com/sprocket-9/hacs-nuvo-serial)
 
