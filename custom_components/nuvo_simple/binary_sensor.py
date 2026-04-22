@@ -4,7 +4,7 @@ import logging
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -14,7 +14,6 @@ from homeassistant.const import STATE_OFF, STATE_ON
 
 from . import (
     DOMAIN as COMPONENT_DOMAIN,
-    NUVO,
     MODEL,
     DATA_NUVO,
     ZONE_SCHEMA,
@@ -25,24 +24,32 @@ from . import (
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'binary_sensor'
 
-async def async_setup_entry(hass, entry):
-    """Set up the number entities for Nuvo."""
-    platform = entity_platform.async_get_current_platform()
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up Nuvo binary sensor entities from a config entry."""
+    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
+    zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
+    model = hass.data[COMPONENT_DOMAIN][MODEL]
+    entities = []
+    for zone_id, extra in zones.items():
+        if model == 'ESSENTIA_D':
+            _LOGGER.info("Adding binary sensor entity for zone %d - %s", zone_id, extra[CONF_NAME])
+            entities.append(NuvoOverride(nuvo, zone_id, extra[CONF_NAME]))
+    async_add_entities(entities, True)
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: AddEntitiesCallback,
     discovery_info: None) -> None:
+    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
     zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
     hass.data[DATA_NUVO][DOMAIN] = []
 
     for zone_id, extra in zones.items():
         if hass.data[DATA_NUVO][MODEL] == 'ESSENTIA_D':
-            _LOGGER.info("Adding binary sensor entity for zone %d - %s", zone_id,\
-                     extra[CONF_NAME])
-            hass.data[DATA_NUVO][DOMAIN].append(NuvoOverride(
-                NUVO, zone_id, extra[CONF_NAME]))
+            _LOGGER.info("Adding binary sensor entity for zone %d - %s", zone_id, extra[CONF_NAME])
+            hass.data[DATA_NUVO][DOMAIN].append(NuvoOverride(nuvo, zone_id, extra[CONF_NAME]))
 
     async_add_entities(hass.data[DATA_NUVO][DOMAIN], True)
 
@@ -51,7 +58,7 @@ class NuvoOverride(BinarySensorEntity):
 
     def __init__(self, nuvo, zone_id, zone_name):
         """Initialize new zone."""
-        self._nuvo = NUVO
+        self._nuvo = nuvo
         self._zone_id = zone_id
         self._name = zone_name
 
@@ -62,7 +69,7 @@ class NuvoOverride(BinarySensorEntity):
     @callback
     def _update_callback(self):
         _LOGGER.debug('Zone %s settings (override) update called', self._zone_id)
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Retrieve latest state."""
@@ -72,6 +79,10 @@ class NuvoOverride(BinarySensorEntity):
             return None
         else:
             self._override = state.override
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_override"
 
     @property
     def should_poll(self):

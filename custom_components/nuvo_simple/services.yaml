@@ -1,6 +1,18 @@
 paging_on:
   name: Paging On
   description: Activate Paging feature for all zones.
+  fields:
+    volume_offset:
+      name: Volume Offset
+      description: Optional percentage offset applied to each zone's paging volume. Positive values increase volume, negative values decrease it. Clamped to 0-100%.
+      required: false
+      default: 0
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
 
 paging_off:
   name: Paging Off

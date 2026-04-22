@@ -1,4 +1,4 @@
-# nuvo_simple
+# Nuvo Classic
 Home Assistant custom component integration to control the basic Nuvo whole home amplifiers using a serial (RS232) connection.
 
 Currently supports Concerto, Essentia D, and Simplese (untested).
@@ -54,12 +54,12 @@ The media player entities support join/unjoin to make speaker groups.  This has 
 ##### Paging service:
 These Nuvos do not natively support a page function, however you can configure a paging zone and volume levels for the service to switch the amp over to.  Calling the off service restores all zones to their previous state.
 
+The `nuvo_simple.paging_on` service accepts an optional `volume_offset` parameter (integer, positive or negative percentage) to adjust the paging volume at call time without changing the configured defaults.
+
 ##### All Off Recall:
 If this is enabled, pressing the All Off button on the keypad a second time after all zones have been turned off will turn back on the previously turned off zones.  This works with the keypad only.
 
 ## Known issues:
-
-Paging service turns on the last played zone for a small amount of time.  The Nuvo does not allow source changes when powered down, and even when powering on, will not accept a source change for a very short amount of time.  Therefore, if the last zone playing was zone 1, for example, and your paging zone is 6, zone 1 will play for a fraction of a second when the Paging on service is called until the Nuvo can be switched to the paging zone.  I don't see a way around this.
 
 Keypad lock does not know if the keypad is locked upon startup as there is no way to query the current status from the Nuvo.
 
@@ -78,34 +78,31 @@ In the repository field, enter: https://github.com/brmccrary/nuvo_simple
 
 In the Category field, select Integration. 
 
-The integration will now show up as nuvo_simple under integrations inside HACS.  Click on it and Download.
- 
+The integration will now show up as Nuvo Classic under integrations inside HACS.  Click on it and Download.
+
 ## Configuration:
 
-Configuration must be done through configuration.yaml, no GUI option is available for now.
+Configuration is done entirely through the Home Assistant UI — no configuration.yaml required.
 
-Example:
-~~~
-nuvo_simple:
-  port: /dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0
-  baud: 9600          # Optional, defaults to 9600
-  page_source: 6      # Optional, defaults to source 6
-  page_volume: 35     # Optional, defaults to 35%.  Volume is in percentage.  0 is muted and 100 is loudest.
-  min_offset: -20     # Optional, minimum volume offset percentage for offset number entity.  Defaults to -20
-  max_offset: 20      # Optional, maximum volume offset percentage for offset number entity.  Defaults to 20
-  all_off_recall: yes # Optional, enables "all off recall."  Defaults to no.
-  zones:
-    1:
-      name: Office
-    2:
-      name: Very Noisy Room
-      zone_page_volume: 95  # Optional, if specified will override page_volume above for that zone only.
-  sources:
-    1:
-      name: SiriusXM
-    2:
-      name: Chromecast Audio
-~~~
+After installing, go to **Settings → Integrations → Add Integration** and search for **Nuvo Classic**.
+
+Setup is a three-step wizard:
+
+**Step 1 — Connection Settings:**
+* **Serial Port** — path to the serial device (e.g. `/dev/serial/by-id/usb-Prolific_Technology_Inc._USB-Serial_Controller_D-if00-port0`)
+* **Paging Source** — source number used for paging (default: 6)
+* **Default Page Volume (%)** — default volume for paging (default: 35)
+* **Recall Zones After All Off** — enables "all off recall" (default: off)
+* **Minimum/Maximum Volume Offset** — range for the volume offset number entity (defaults: -20 / 20)
+
+**Step 2 — Sources:**
+Enter a name for each source input (1–6). Leave blank to disable that source.
+
+**Step 3 — Zones:**
+Check the box to enable each zone, give it a name, and optionally set a per-zone paging volume override.
+
+After initial setup you can change any of these settings at any time via the **Configure** button on the integration card in Settings → Integrations. Changes take effect immediately without restarting Home Assistant.
+
 ## How to use when the serial port is on another machine:
 
 You can use the program ncat, available on most Linux distros, as a way to access the Nuvo across the LAN if it's on a different machine.
@@ -150,9 +147,9 @@ Run the following to start the new "nuvonet" service:
 systemctl enable nuvonet
 systemctl start nuvonet
 ~~~
-Change the port setting in configuration.yaml to:
+Enter the following as the serial port in the integration setup:
 ~~~
-port: socket://<yournuvohost>:59001
+socket://<yournuvohost>:59001
 ~~~
 
 **IMPORTANT**  This has no security at all, so anyone could connect, in this case, to port 59001 and control your Nuvo.  Do not expose this port to the outside.  

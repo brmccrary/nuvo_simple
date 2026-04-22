@@ -1,0 +1,155 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "title": "Connection Settings",
+        "data": {
+          "port": "Serial Port",
+          "page_source": "Paging Source",
+          "page_volume": "Default Page Volume (%)",
+          "all_off_recall": "Recall Zones After All Off",
+          "min_offset": "Minimum Volume Offset",
+          "max_offset": "Maximum Volume Offset"
+        }
+      },
+      "sources": {
+        "title": "Configure Sources",
+        "description": "Enter a name for each source input. Leave blank to disable that source.",
+        "data": {
+          "source_1": "Source 1 Name",
+          "source_2": "Source 2 Name",
+          "source_3": "Source 3 Name",
+          "source_4": "Source 4 Name",
+          "source_5": "Source 5 Name",
+          "source_6": "Source 6 Name"
+        }
+      },
+      "zones": {
+        "title": "Configure Zones",
+        "description": "Check the box to enable each zone. Set a name and optional paging volume override.",
+        "data": {
+          "zone_1_enabled": "Zone 1 Enabled",
+          "zone_1_name": "Zone 1 Name",
+          "zone_1_page_volume": "Zone 1 Page Volume Override (%)",
+          "zone_2_enabled": "Zone 2 Enabled",
+          "zone_2_name": "Zone 2 Name",
+          "zone_2_page_volume": "Zone 2 Page Volume Override (%)",
+          "zone_3_enabled": "Zone 3 Enabled",
+          "zone_3_name": "Zone 3 Name",
+          "zone_3_page_volume": "Zone 3 Page Volume Override (%)",
+          "zone_4_enabled": "Zone 4 Enabled",
+          "zone_4_name": "Zone 4 Name",
+          "zone_4_page_volume": "Zone 4 Page Volume Override (%)",
+          "zone_5_enabled": "Zone 5 Enabled",
+          "zone_5_name": "Zone 5 Name",
+          "zone_5_page_volume": "Zone 5 Page Volume Override (%)",
+          "zone_6_enabled": "Zone 6 Enabled",
+          "zone_6_name": "Zone 6 Name",
+          "zone_6_page_volume": "Zone 6 Page Volume Override (%)",
+          "zone_7_enabled": "Zone 7 Enabled",
+          "zone_7_name": "Zone 7 Name",
+          "zone_7_page_volume": "Zone 7 Page Volume Override (%)",
+          "zone_8_enabled": "Zone 8 Enabled",
+          "zone_8_name": "Zone 8 Name",
+          "zone_8_page_volume": "Zone 8 Page Volume Override (%)",
+          "zone_9_enabled": "Zone 9 Enabled",
+          "zone_9_name": "Zone 9 Name",
+          "zone_9_page_volume": "Zone 9 Page Volume Override (%)",
+          "zone_10_enabled": "Zone 10 Enabled",
+          "zone_10_name": "Zone 10 Name",
+          "zone_10_page_volume": "Zone 10 Page Volume Override (%)",
+          "zone_11_enabled": "Zone 11 Enabled",
+          "zone_11_name": "Zone 11 Name",
+          "zone_11_page_volume": "Zone 11 Page Volume Override (%)",
+          "zone_12_enabled": "Zone 12 Enabled",
+          "zone_12_name": "Zone 12 Name",
+          "zone_12_page_volume": "Zone 12 Page Volume Override (%)"
+        }
+      }
+    },
+    "error": {
+      "no_sources": "At least one source must be configured.",
+      "no_zones": "At least one zone must be configured."
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connection Settings",
+        "data": {
+          "port": "Serial Port",
+          "page_source": "Paging Source",
+          "page_volume": "Default Page Volume (%)",
+          "all_off_recall": "Recall Zones After All Off",
+          "min_offset": "Minimum Volume Offset",
+          "max_offset": "Maximum Volume Offset"
+        }
+      },
+      "sources": {
+        "title": "Configure Sources",
+        "description": "Enter a name for each source input. Leave blank to disable that source.",
+        "data": {
+          "source_1": "Source 1 Name",
+          "source_2": "Source 2 Name",
+          "source_3": "Source 3 Name",
+          "source_4": "Source 4 Name",
+          "source_5": "Source 5 Name",
+          "source_6": "Source 6 Name"
+        }
+      },
+      "zones": {
+        "title": "Configure Zones",
+        "description": "Check the box to enable each zone. Set a name and optional paging volume override.",
+        "data": {
+          "zone_1_enabled": "Zone 1 Enabled",
+          "zone_1_name": "Zone 1 Name",
+          "zone_1_page_volume": "Zone 1 Page Volume Override (%)",
+          "zone_2_enabled": "Zone 2 Enabled",
+          "zone_2_name": "Zone 2 Name",
+          "zone_2_page_volume": "Zone 2 Page Volume Override (%)",
+          "zone_3_enabled": "Zone 3 Enabled",
+          "zone_3_name": "Zone 3 Name",
+          "zone_3_page_volume": "Zone 3 Page Volume Override (%)",
+          "zone_4_enabled": "Zone 4 Enabled",
+          "zone_4_name": "Zone 4 Name",
+          "zone_4_page_volume": "Zone 4 Page Volume Override (%)",
+          "zone_5_enabled": "Zone 5 Enabled",
+          "zone_5_name": "Zone 5 Name",
+          "zone_5_page_volume": "Zone 5 Page Volume Override (%)",
+          "zone_6_enabled": "Zone 6 Enabled",
+          "zone_6_name": "Zone 6 Name",
+          "zone_6_page_volume": "Zone 6 Page Volume Override (%)",
+          "zone_7_enabled": "Zone 7 Enabled",
+          "zone_7_name": "Zone 7 Name",
+          "zone_7_page_volume": "Zone 7 Page Volume Override (%)",
+          "zone_8_enabled": "Zone 8 Enabled",
+          "zone_8_name": "Zone 8 Name",
+          "zone_8_page_volume": "Zone 8 Page Volume Override (%)",
+          "zone_9_enabled": "Zone 9 Enabled",
+          "zone_9_name": "Zone 9 Name",
+          "zone_9_page_volume": "Zone 9 Page Volume Override (%)",
+          "zone_10_enabled": "Zone 10 Enabled",
+          "zone_10_name": "Zone 10 Name",
+          "zone_10_page_volume": "Zone 10 Page Volume Override (%)",
+          "zone_11_enabled": "Zone 11 Enabled",
+          "zone_11_name": "Zone 11 Name",
+          "zone_11_page_volume": "Zone 11 Page Volume Override (%)",
+          "zone_12_enabled": "Zone 12 Enabled",
+          "zone_12_name": "Zone 12 Name",
+          "zone_12_page_volume": "Zone 12 Page Volume Override (%)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the serial port. Check the port path and baud rate.",
+      "cannot_detect_model": "Connected but could not detect a supported Nuvo model.",
+      "no_sources": "At least one source must be configured.",
+      "no_zones": "At least one zone must be configured.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "Nuvo Classic is already configured.",
+      "single_instance_allowed": "Only a single instance is allowed."
+    }
+  }
+}

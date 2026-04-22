@@ -6,14 +6,13 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import CONF_TYPE, CONF_NAME, CONF_PORT
 from homeassistant.helpers import config_validation as cv, entity_platform
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import (
     DOMAIN as COMPONENT_DOMAIN,
-    NUVO,
     MODEL,
     DATA_NUVO,
     ZONE_SCHEMA,
@@ -25,28 +24,40 @@ from . import (
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'switch'
 
-async def async_setup_entry(hass, entry):
-    """Set up the number entities for Nuvo."""
-    platform = entity_platform.async_get_current_platform()
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up Nuvo switch entities from a config entry."""
+    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
+    zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
+    model = hass.data[COMPONENT_DOMAIN][MODEL]
+    entities = []
+    for zone_id, extra in zones.items():
+        _LOGGER.info("Adding switch entities for zone %d - %s", zone_id, extra[CONF_NAME])
+        if model != 'CONCERTO':
+            entities.append(NuvoGroup(nuvo, zone_id, extra[CONF_NAME]))
+        if model == 'ESSENTIA_D':
+            entities.append(NuvoVolumeReset(nuvo, zone_id, extra[CONF_NAME]))
+        if model != 'CONCERTO':
+            entities.append(NuvoKeypadLock(nuvo, zone_id, extra[CONF_NAME]))
+    async_add_entities(entities, True)
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: AddEntitiesCallback,
     discovery_info: None) -> None:
+    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
     zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
     hass.data[DATA_NUVO][DOMAIN] = []
 
     for zone_id, extra in zones.items():
-        _LOGGER.info("Adding switch entities for zone %d - %s", zone_id,\
-                     extra[CONF_NAME])
-        hass.data[DATA_NUVO][DOMAIN].append(NuvoGroup(
-            NUVO, zone_id, extra[CONF_NAME]))
+        _LOGGER.info("Adding switch entities for zone %d - %s", zone_id, extra[CONF_NAME])
+        if hass.data[DATA_NUVO][MODEL] != 'CONCERTO':
+            hass.data[DATA_NUVO][DOMAIN].append(NuvoGroup(nuvo, zone_id, extra[CONF_NAME]))
         if hass.data[DATA_NUVO][MODEL] == 'ESSENTIA_D':
-            hass.data[DATA_NUVO][DOMAIN].append(NuvoVolumeReset(
-                NUVO, zone_id, extra[CONF_NAME]))
-        hass.data[DATA_NUVO][DOMAIN].append(NuvoKeypadLock(
-            NUVO, zone_id, extra[CONF_NAME]))
+            hass.data[DATA_NUVO][DOMAIN].append(NuvoVolumeReset(nuvo, zone_id, extra[CONF_NAME]))
+        if hass.data[DATA_NUVO][MODEL] != 'CONCERTO':
+            hass.data[DATA_NUVO][DOMAIN].append(NuvoKeypadLock(nuvo, zone_id, extra[CONF_NAME]))
 
     async_add_entities(hass.data[DATA_NUVO][DOMAIN], True)
 
@@ -55,7 +66,7 @@ class NuvoGroup(SwitchEntity):
 
     def __init__(self, nuvo, zone_id, zone_name):
         """Initialize new zone."""
-        self._nuvo = NUVO
+        self._nuvo = nuvo
         self._zone_id = zone_id
         self._name = zone_name
 
@@ -66,7 +77,7 @@ class NuvoGroup(SwitchEntity):
     @callback
     def _update_callback(self):
         _LOGGER.debug('Zone %s settings (group) update called', self._zone_id)
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Retrieve latest state."""
@@ -76,6 +87,10 @@ class NuvoGroup(SwitchEntity):
             return None
         else:
             self._group = state.group
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_source_group"
 
     @property
     def should_poll(self):
@@ -116,7 +131,7 @@ class NuvoVolumeReset(SwitchEntity):
     @callback
     def _update_callback(self):
         _LOGGER.debug('Zone %s settings (volume reset) update called', self._zone_id)
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Retrieve latest state."""
@@ -126,6 +141,10 @@ class NuvoVolumeReset(SwitchEntity):
             return None
         else:
             self._volume_reset = state.volume_reset
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_volume_reset"
 
     @property
     def should_poll(self):
@@ -166,7 +185,7 @@ class NuvoKeypadLock(SwitchEntity):
     @callback
     def _update_callback(self):
         _LOGGER.debug('Zone %s settings (keypad lock) update called', self._zone_id)
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Retrieve latest state."""
@@ -176,6 +195,10 @@ class NuvoKeypadLock(SwitchEntity):
             return None
         else:
             self._keypad_lock = state.keypad_lock
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_keypad_lock"
 
     @property
     def should_poll(self):

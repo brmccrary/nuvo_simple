@@ -8,12 +8,12 @@ from homeassistant.const import CONF_TYPE, CONF_NAME, CONF_PORT
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType, HomeAssistantType
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt as dt_util
 
 from . import (
     DOMAIN as COMPONENT_DOMAIN,
-    NUVO,
+    MODEL,
     DATA_NUVO,
     ZONE_SCHEMA,
     CONF_ZONES,
@@ -25,29 +25,42 @@ from . import (
 _LOGGER = logging.getLogger(__name__)
 DOMAIN = 'number'
 
-async def async_setup_entry(hass, entry):
-    """Set up the number entities for Nuvo."""
-    platform = entity_platform.async_get_current_platform()
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up Nuvo number entities from a config entry."""
+    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
+    zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
+    min_offset = int(hass.data[COMPONENT_DOMAIN][CONF_MIN_OFFSET])
+    max_offset = int(hass.data[COMPONENT_DOMAIN][CONF_MAX_OFFSET])
+    model = hass.data[COMPONENT_DOMAIN][MODEL]
+    entities = []
+    for zone_id, extra in zones.items():
+        _LOGGER.info("Adding number entities for zone %d - %s", zone_id, extra[CONF_NAME])
+        entities.append(NuvoBass(nuvo, zone_id, extra[CONF_NAME]))
+        entities.append(NuvoTreble(nuvo, zone_id, extra[CONF_NAME]))
+        entities.append(NuvoVolumeOffset(nuvo, zone_id, extra[CONF_NAME], min_offset, max_offset))
+        if model == 'CONCERTO':
+            entities.append(NuvoBalance(nuvo, zone_id, extra[CONF_NAME]))
+    async_add_entities(entities, True)
+
 
 async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: AddEntitiesCallback,
     discovery_info: None) -> None:
+    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
     zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
     min_offset = int(hass.data[COMPONENT_DOMAIN][CONF_MIN_OFFSET])
     max_offset = int(hass.data[COMPONENT_DOMAIN][CONF_MAX_OFFSET])
     hass.data[DATA_NUVO][DOMAIN] = []
 
     for zone_id, extra in zones.items():
-        _LOGGER.info("Adding number entities for zone %d - %s", zone_id,\
-                     extra[CONF_NAME])
-        hass.data[DATA_NUVO][DOMAIN].append(NuvoBass(
-            NUVO, zone_id, extra[CONF_NAME]))
-        hass.data[DATA_NUVO][DOMAIN].append(NuvoTreble(
-            NUVO, zone_id, extra[CONF_NAME]))
-        hass.data[DATA_NUVO][DOMAIN].append(NuvoVolumeOffset(
-            NUVO, zone_id, extra[CONF_NAME], min_offset, max_offset))
+        _LOGGER.info("Adding number entities for zone %d - %s", zone_id, extra[CONF_NAME])
+        hass.data[DATA_NUVO][DOMAIN].append(NuvoBass(nuvo, zone_id, extra[CONF_NAME]))
+        hass.data[DATA_NUVO][DOMAIN].append(NuvoTreble(nuvo, zone_id, extra[CONF_NAME]))
+        hass.data[DATA_NUVO][DOMAIN].append(NuvoVolumeOffset(nuvo, zone_id, extra[CONF_NAME], min_offset, max_offset))
+        if hass.data[DATA_NUVO][MODEL] == 'CONCERTO':
+            hass.data[DATA_NUVO][DOMAIN].append(NuvoBalance(nuvo, zone_id, extra[CONF_NAME]))
 
     async_add_entities(hass.data[DATA_NUVO][DOMAIN], True)
 
@@ -56,7 +69,7 @@ class NuvoBass(NumberEntity):
 
     def __init__(self, nuvo, zone_id, zone_name):
         """Initialize new zone."""
-        self._nuvo = NUVO
+        self._nuvo = nuvo
         self._zone_id = zone_id
         self._name = zone_name
 
@@ -69,7 +82,7 @@ class NuvoBass(NumberEntity):
     @callback
     def _update_callback(self):
         _LOGGER.debug('Zone %s settings (bass) update called', self._zone_id)
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Retrieve latest state."""
@@ -77,6 +90,10 @@ class NuvoBass(NumberEntity):
         if not state:
             return False
         self._bass = state.bass
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_bass"
 
     @property
     def should_poll(self):
@@ -126,7 +143,7 @@ class NuvoTreble(NumberEntity):
     @callback
     def _update_callback(self):
         _LOGGER.debug('Zone %s settings (treble) update called', self._zone_id)
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Retrieve latest state."""
@@ -134,6 +151,10 @@ class NuvoTreble(NumberEntity):
         if not state:
             return False
         self._treble = state.treble
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_treble"
 
     @property
     def should_poll(self):
@@ -185,7 +206,7 @@ class NuvoVolumeOffset(NumberEntity):
     @callback
     def _update_callback(self):
         _LOGGER.debug('Zone %s settings (volume offset) update called', self._zone_id)
-        self.async_schedule_update_ha_state(True)
+        self.schedule_update_ha_state(True)
 
     def update(self):
         """Retrieve latest state."""
@@ -193,6 +214,10 @@ class NuvoVolumeOffset(NumberEntity):
         if not state:
             return False
         self._volume_offset = state.volume_offset
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_volume_offset"
 
     @property
     def should_poll(self):
@@ -224,3 +249,66 @@ class NuvoVolumeOffset(NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         self._nuvo.set_volume_offset(self._zone_id, value)
+
+class NuvoBalance(NumberEntity):
+    """Representation of a Nuvo amplifier zone settings."""
+
+    def __init__(self, nuvo, zone_id, zone_name):
+        """Initialize new zone."""
+        self._nuvo = nuvo
+        self._zone_id = zone_id
+        self._name = zone_name
+
+        self._balance = None
+
+    async def async_added_to_hass(self) -> None:
+        self._nuvo.add_callback(self._update_callback, self._zone_id, self._name, 'settings')
+        self.update()
+
+    @callback
+    def _update_callback(self):
+        _LOGGER.debug('Zone %s settings (balance) update called', self._zone_id)
+        self.schedule_update_ha_state(True)
+
+    def update(self):
+        """Retrieve latest state."""
+        state = self._nuvo.zoneset_status(self._zone_id)
+        if not state:
+            return False
+        self._balance = state.balance
+
+    @property
+    def unique_id(self):
+        return f"nuvo_simple_zone_{self._zone_id}_balance"
+
+    @property
+    def should_poll(self):
+        """Disable polling."""
+        return False
+
+    @property
+    def name(self):
+        """Return the name of the zone."""
+        return f'{self._name} balance'
+
+    @property
+    def native_min_value(self) -> float:
+        return float('-6')
+
+    @property
+    def native_max_value(self) -> float:
+        return float('+6')
+
+    @property
+    def native_step(self) -> float:
+        return float('1')
+
+    @property
+    def native_value(self):
+        """Return the current balance level.."""
+        return self._balance
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set new value."""
+        _LOGGER.debug('Zone %s set balance %s', self._zone_id, value)
+        self._nuvo.set_balance(self._zone_id, value)
