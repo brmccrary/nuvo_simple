@@ -1,8 +1,8 @@
 {
   "domain": "nuvo_simple",
   "name": "Nuvo Classic",
-  "config_flow": true,
   "codeowners": ["@brmccrary"],
+  "config_flow": true,
   "dependencies": ["http", "zeroconf"],
   "documentation": "https://github.com/brmccrary/nuvo-simple",
   "integration_type": "hub",
