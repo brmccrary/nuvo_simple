@@ -1,7 +1,7 @@
 # Nuvo Classic
 Home Assistant custom component integration to control the basic Nuvo whole home amplifiers using a serial (RS232) connection.
 
-Currently supports Concerto, Essentia D, and Simplese (untested).
+Currently supports Concerto, Essentia D, and Simplese.
 
 For the Grand Concerto / Essentia G see sproket-9's integration [nuvo_serial](https://raw.githubusercontent.com/sprocket-9/hacs-nuvo-serial)
 
@@ -54,7 +54,7 @@ The media player entities support join/unjoin to make speaker groups.  This has 
 ##### Paging service:
 These Nuvos do not natively support a page function, however you can configure a paging zone and volume levels for the service to switch the amp over to.  Calling the off service restores all zones to their previous state.
 
-The `nuvo_simple.paging_on` service accepts an optional `volume_offset` parameter (integer, positive or negative percentage) to adjust the paging volume at call time without changing the configured defaults.
+The `nuvo_simple.paging_on` service accepts an optional `volume_offset` parameter to adjust the paging volume at all zones without changing the configured defaults.
 
 ##### All Off Recall:
 If this is enabled, pressing the All Off button on the keypad a second time after all zones have been turned off will turn back on the previously turned off zones.  This works with the keypad only.
