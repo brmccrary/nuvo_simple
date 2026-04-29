@@ -95,7 +95,7 @@ class NuvoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 nuvo = await self.hass.async_add_executor_job(
                     get_nuvo,
                     user_input[CONF_PORT],
-                    user_input[CONF_BAUD],
+                    9600,
                     user_input[CONF_ALL_OFF_RECALL],
                 )
                 model = await self.hass.async_add_executor_job(nuvo.get_model)

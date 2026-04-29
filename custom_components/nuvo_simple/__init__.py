@@ -222,6 +222,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entity_registry = er.async_get(hass)
     for entity_entry in list(entity_registry.entities.values()):
         if (entity_entry.unique_id
+                and isinstance(entity_entry.unique_id, str)
                 and entity_entry.unique_id.startswith('nuvo_simple_zone_')
                 and entity_entry.unique_id not in expected_unique_ids):
             _LOGGER.info("Removing stale entity: %s", entity_entry.entity_id)
