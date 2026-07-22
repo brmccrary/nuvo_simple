@@ -1,8 +1,11 @@
 # Changelog
 
+## 2.0.3 (2026-07-22)
+
+- Added MIT LICENSE file at the repository root (required for HACS default inclusion)
+
 ## 2.0.2 (2026-07-18)
 
-- Added MIT LICENSE file
 - Fixed documentation and issue tracker links in manifest.json
 
 ## 2.0.0 (2026-04-22)
