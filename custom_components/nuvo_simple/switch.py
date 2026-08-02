@@ -72,7 +72,7 @@ class NuvoGroup(SwitchEntity):
 
     async def async_added_to_hass(self) -> None:
         self._nuvo.add_callback(self._update_callback, self._zone_id, self._name, 'settings')
-        self.update()
+        await self.hass.async_add_executor_job(self.update)
 
     @callback
     def _update_callback(self):
@@ -108,11 +108,11 @@ class NuvoGroup(SwitchEntity):
 
     async def async_turn_on(self):
         """Send the on command."""
-        self._nuvo.set_group(self._zone_id, True)
+        await self.hass.async_add_executor_job(self._nuvo.set_group, self._zone_id, True)
 
     async def async_turn_off(self):
         """Send the off command."""
-        self._nuvo.set_group(self._zone_id, False)
+        await self.hass.async_add_executor_job(self._nuvo.set_group, self._zone_id, False)
 
 class NuvoVolumeReset(SwitchEntity):
     """Representation of a Nuvo amplifier zone settings."""
@@ -162,11 +162,11 @@ class NuvoVolumeReset(SwitchEntity):
 
     async def async_turn_on(self):
         """Send the on command."""
-        self._nuvo.set_volume_reset(self._zone_id, True)
+        await self.hass.async_add_executor_job(self._nuvo.set_volume_reset, self._zone_id, True)
 
     async def async_turn_off(self):
         """Send the off command."""
-        self._nuvo.set_volume_reset(self._zone_id, False)
+        await self.hass.async_add_executor_job(self._nuvo.set_volume_reset, self._zone_id, False)
 
 class NuvoKeypadLock(SwitchEntity):
     """Representation of a Nuvo amplifier zone settings."""
@@ -216,8 +216,8 @@ class NuvoKeypadLock(SwitchEntity):
 
     async def async_turn_on(self):
         """Send the on command."""
-        self._nuvo.set_keypad_lock(self._zone_id, True)
+        await self.hass.async_add_executor_job(self._nuvo.set_keypad_lock, self._zone_id, True)
 
     async def async_turn_off(self):
         """Send the off command."""
-        self._nuvo.set_keypad_lock(self._zone_id, False)
+        await self.hass.async_add_executor_job(self._nuvo.set_keypad_lock, self._zone_id, False)

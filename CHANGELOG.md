@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0 (2026-08-02)
+
+- Serial I/O no longer blocks the Home Assistant event loop: all blocking `nuvo-simple` calls in async entity methods (`number`, `switch`) and the initial status reads in `async_added_to_hass` (`media_player`, `binary_sensor`, `number`, `switch`) are now offloaded via `async_add_executor_job`
+- Added in-tree brand assets at `custom_components/nuvo_simple/brand/` (`icon.png`, `icon@2x.png`) so the integration displays an icon (HA 2026.3+)
+
 ## 2.0.3 (2026-07-22)
 
 - Added MIT LICENSE file at the repository root (required for HACS default inclusion)

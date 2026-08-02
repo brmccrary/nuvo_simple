@@ -77,7 +77,7 @@ class NuvoBass(NumberEntity):
 
     async def async_added_to_hass(self) -> None:
         self._nuvo.add_callback(self._update_callback, self._zone_id, self._name, 'settings')
-        self.update()
+        await self.hass.async_add_executor_job(self.update)
 
     @callback
     def _update_callback(self):
@@ -124,7 +124,7 @@ class NuvoBass(NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
-        self._nuvo.set_bass(self._zone_id, value)
+        await self.hass.async_add_executor_job(self._nuvo.set_bass, self._zone_id, value)
 
 class NuvoTreble(NumberEntity):
     """Representation of a Nuvo amplifier zone settings."""
@@ -185,7 +185,7 @@ class NuvoTreble(NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
-        self._nuvo.set_treble(self._zone_id, value)
+        await self.hass.async_add_executor_job(self._nuvo.set_treble, self._zone_id, value)
 
 class NuvoVolumeOffset(NumberEntity):
     """Representation of a Nuvo amplifier zone settings."""
@@ -248,7 +248,7 @@ class NuvoVolumeOffset(NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
-        self._nuvo.set_volume_offset(self._zone_id, value)
+        await self.hass.async_add_executor_job(self._nuvo.set_volume_offset, self._zone_id, value)
 
 class NuvoBalance(NumberEntity):
     """Representation of a Nuvo amplifier zone settings."""
@@ -263,7 +263,7 @@ class NuvoBalance(NumberEntity):
 
     async def async_added_to_hass(self) -> None:
         self._nuvo.add_callback(self._update_callback, self._zone_id, self._name, 'settings')
-        self.update()
+        await self.hass.async_add_executor_job(self.update)
 
     @callback
     def _update_callback(self):
@@ -311,4 +311,4 @@ class NuvoBalance(NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         _LOGGER.debug('Zone %s set balance %s', self._zone_id, value)
-        self._nuvo.set_balance(self._zone_id, value)
+        await self.hass.async_add_executor_job(self._nuvo.set_balance, self._zone_id, value)

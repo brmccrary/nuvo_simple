@@ -106,7 +106,7 @@ class NuvoZone(MediaPlayerEntity):
 
     async def async_added_to_hass(self) -> None:
         self._nuvo.add_callback(self._update_callback, self._zone_id, self.entity_id, 'media')
-        self.update()
+        await self.hass.async_add_executor_job(self.update)
 
     def join_players(self, group_members: list[str]):
         _LOGGER.debug('Zone %s adding %s to group', self._zone_id, group_members)
