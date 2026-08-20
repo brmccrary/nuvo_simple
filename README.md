@@ -68,17 +68,24 @@ Connection to the Nuvo is by an RS232 serial port from the host running Home Ass
 
 ## Installing:
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
-Install using the Home Assistant Community Store [HACS](https://hacs.xyz).
+This integration is part of the default [HACS](https://hacs.xyz) store — no custom repository needed.
 
-Once HACS is installed, go to the Integrations page and select the menu in the upper right hand corner and choose "Custom Repositories."
+Click the button below to open it directly in HACS on your Home Assistant instance:
 
-In the repository field, enter: https://github.com/brmccrary/nuvo_simple
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=brmccrary&repository=nuvo_simple&category=integration)
 
-In the Category field, select Integration. 
+Or install it manually:
 
-The integration will now show up as Nuvo Classic under integrations inside HACS.  Click on it and Download.
+1. Open **HACS** in Home Assistant.
+2. Search for **Nuvo Classic**.
+3. Click it, then **Download**.
+4. Restart Home Assistant when prompted.
+
+The integration will then be available under **Settings → Integrations → Add Integration** (see Configuration below).
+
+> **Already installed via a custom repository?** No action is required — it keeps working and updating from the same repo. If you'd like to tidy up, open **HACS → ⋮ menu → Custom repositories** and remove the `brmccrary/nuvo_simple` entry. This only removes the manual tracking; your installed integration, config, and entities are untouched, and HACS continues to track updates through the default store.
 
 ## Configuration:
 
