@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.1 (2026-10-16)
+
+- The integration icon is the Nuvo logo again (the bundled brand icon added in 2.1.0 was a generic speaker icon). A logo is now included too.
+
 ## 3.0.0 (2026-10-16)
 
 ### New Features
