@@ -2,7 +2,7 @@
   "name": "Nuvo Classic multi-zone amplifier",
   "render_readme": true,
   "country": "ALL",
-  "homeassistant": "2024.1.0",
+  "homeassistant": "2026.5.0",
   "zip_release": true,
   "filename": "nuvo_simple.zip"
 }

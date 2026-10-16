@@ -1,30 +1,18 @@
 """Support for interfacing with Nuvo Multi-Zone Amplifier via serial/RS-232."""
 
 import logging
-import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.media_player import (
-    DOMAIN, PLATFORM_SCHEMA, MediaPlayerEntity, MediaPlayerEntityFeature)
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState, \
-    SOURCE_IMPORT
-from homeassistant.const import (
-    ATTR_ENTITY_ID, CONF_NAME, CONF_PORT, STATE_OFF, STATE_ON)
-from homeassistant.helpers import config_validation as cv, entity_platform, \
-    service, discovery
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import dt as dt_util
+    MediaPlayerEntity, MediaPlayerEntityFeature)
+from homeassistant.const import CONF_NAME, STATE_OFF, STATE_ON
 
 from . import (
     DOMAIN as COMPONENT_DOMAIN,
-    DATA_NUVO,
+    MODEL,
     CONF_SOURCES,
     CONF_ZONES,
-    SOURCE_SCHEMA,
-    ZONE_SCHEMA,
-    SOURCE_IDS,
-    ZONE_IDS
+    zone_device_info,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,41 +25,33 @@ SUPPORT_NUVO = MediaPlayerEntityFeature.VOLUME_MUTE | \
                     MediaPlayerEntityFeature.SELECT_SOURCE | \
                     MediaPlayerEntityFeature.GROUPING
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_PORT): cv.string,
-    vol.Required(CONF_ZONES): vol.Schema({ZONE_IDS: ZONE_SCHEMA}),
-    vol.Required(CONF_SOURCES): vol.Schema({SOURCE_IDS: SOURCE_SCHEMA}),
-})
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Nuvo media player entities from a config entry."""
-    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
-    sources = hass.data[COMPONENT_DOMAIN][CONF_SOURCES]
-    zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
-    entities = [NuvoZone(hass, nuvo, sources, 0, 'Group Controller')]
+    data = hass.data[COMPONENT_DOMAIN][entry.entry_id]
+    nuvo = data['nuvo']
+    sources = data[CONF_SOURCES]
+    zones = data[CONF_ZONES]
+    model = data[MODEL]
+    entities = [NuvoZone(hass, nuvo, sources, 0, 'Group Controller',
+                         entry.entry_id, model)]
     for zone_id, extra in zones.items():
         _LOGGER.info("Adding media player zone %d - %s", zone_id, extra[CONF_NAME])
-        entities.append(NuvoZone(hass, nuvo, sources, zone_id, extra[CONF_NAME]))
+        entities.append(NuvoZone(hass, nuvo, sources, zone_id, extra[CONF_NAME],
+                                 entry.entry_id, model))
     async_add_entities(entities, True)
 
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    nuvo = hass.data[COMPONENT_DOMAIN]['nuvo']
-    sources = hass.data[COMPONENT_DOMAIN][CONF_SOURCES]
-    zones = hass.data[COMPONENT_DOMAIN][CONF_ZONES]
-    hass.data[DATA_NUVO][DOMAIN] = []
-    hass.data[DATA_NUVO][DOMAIN].append(NuvoZone(hass, nuvo, sources, 0, 'Group Controller'))
-
-    for zone_id, extra in zones.items():
-        _LOGGER.info("Adding media player zone %d - %s", zone_id, extra[CONF_NAME])
-        hass.data[DATA_NUVO][DOMAIN].append(NuvoZone(hass, nuvo, sources, zone_id, extra[CONF_NAME]))
-
-    async_add_entities(hass.data[DATA_NUVO][DOMAIN], True)
 
 class NuvoZone(MediaPlayerEntity):
     """Representation of a Nuvo amplifier zone."""
 
-    def __init__(self, hass: HomeAssistant, nuvo, sources, zone_id, zone_name):
+    # The media player is the zone device's primary entity: it takes the
+    # zone device's name, so friendly names stay just "Office" etc.
+    _attr_has_entity_name = True
+    _attr_name = None
+
+    def __init__(self, hass: HomeAssistant, nuvo, sources, zone_id, zone_name,
+                 entry_id, model):
         """Initialize new zone."""
         self._nuvo = nuvo
         self._source_id_name = sources
@@ -81,11 +61,14 @@ class NuvoZone(MediaPlayerEntity):
                                     key=lambda v: self._source_name_id[v])
         self._zone_id = zone_id
         self._name = zone_name
+        self._attr_unique_id = f"{entry_id}_zone_{zone_id}"
+        self._attr_device_info = zone_device_info(entry_id, model, zone_id, zone_name)
 
         self._state = None
         self._volume = None
         self._source = None
         self._mute = None
+        self._group_members = None
 
     def update(self):
         """Retrieve latest state."""
@@ -108,6 +91,11 @@ class NuvoZone(MediaPlayerEntity):
         self._nuvo.add_callback(self._update_callback, self._zone_id, self.entity_id, 'media')
         await self.hass.async_add_executor_job(self.update)
 
+    @callback
+    def async_entity_id_changed(self, old_entity_id: str) -> None:
+        super().async_entity_id_changed(old_entity_id)
+        self._nuvo.update_entity_id(old_entity_id, self.entity_id)
+
     def join_players(self, group_members: list[str]):
         _LOGGER.debug('Zone %s adding %s to group', self._zone_id, group_members)
         self._nuvo.join_players(self._zone_id, group_members)
@@ -121,16 +109,6 @@ class NuvoZone(MediaPlayerEntity):
     def _update_callback(self):
         _LOGGER.debug('Zone %s media player update called', self._zone_id)
         self.schedule_update_ha_state(True)
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for this zone."""
-        return f"nuvo_simple_zone_{self._zone_id}"
-
-    @property
-    def name(self):
-        """Return the name of the zone."""
-        return self._name
 
     @property
     def should_poll(self):
@@ -227,4 +205,3 @@ class NuvoZone(MediaPlayerEntity):
         if self._volume is None:
             return
         self._nuvo.set_volume(self._zone_id, max(self._volume - 1, -78))
-

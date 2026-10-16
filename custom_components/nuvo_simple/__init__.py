@@ -3,11 +3,12 @@ import logging
 
 import voluptuous as vol
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry, SOURCE_IMPORT
 from homeassistant.const import CONF_NAME, CONF_PORT, Platform
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv, discovery, entity_registry as er
+from homeassistant.helpers import config_validation as cv, device_registry as dr, entity_registry as er
+from homeassistant.helpers.device_registry import DeviceInfo
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +45,8 @@ SERVICE_ALL_OFF = "all_off"
 PAGE_ZONES = "page_zones"
 ZONE_PAGE_VOLUME = "zone_page_volume"
 
+LEGACY_UNIQUE_ID_PREFIX = "nuvo_simple_zone_"
+
 ZONE_SCHEMA = vol.Schema({
     vol.Required(CONF_NAME): cv.string,
     vol.Optional(CONF_ZONE_PAGE_VOLUME): cv.string,
@@ -75,8 +78,27 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-from serial import SerialException
-from nuvo_simple import get_nuvo
+from .nuvo import get_nuvo
+
+
+# Device registry id of each entry's hub device, recorded in async_setup_entry.
+# HA 2026.9 dropped the `via_device` identifier-tuple form of DeviceInfo in
+# favour of `via_device_id`, which needs the hub's registry id rather than its
+# identifiers, so the id is looked up here instead of at every call site.
+_HUB_DEVICE_IDS: dict[str, str] = {}
+
+
+def zone_device_info(entry_id: str, model: str, zone_id: int, zone_name: str) -> DeviceInfo:
+    """Device info for one zone, presented as a child device of the amplifier."""
+    info = DeviceInfo(
+        identifiers={(DOMAIN, f'{entry_id}_zone_{zone_id}')},
+        name=zone_name,
+        manufacturer='Nuvo',
+        model=model,
+    )
+    if hub_device_id := _HUB_DEVICE_IDS.get(entry_id):
+        info['via_device_id'] = hub_device_id
+    return info
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -108,23 +130,52 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+async def _async_remote_port_available(hass: HomeAssistant, port: str) -> bool:
+    """Whether a network serial port is currently offered by its device.
+
+    Local device paths are always considered available; opening those is the
+    driver's job and it retries on its own.
+    """
+    if '://' not in port:
+        return True
+
+    from homeassistant.components.usb import async_scan_serial_ports
+
+    try:
+        ports = await async_scan_serial_ports(hass)
+    except Exception:
+        _LOGGER.debug("Serial port scan failed", exc_info=True)
+        return True
+
+    # Ports no scanner contributes (socket://, rfc2217://) are never listed
+    scanned_schemes = ('esphome-hass://', 'esphome://')
+    if not port.startswith(scanned_schemes):
+        return True
+    return any(p.device == port for p in ports)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Nuvo Classic from a config entry."""
+    """Set up a Nuvo Classic amplifier from a config entry."""
     conf = {**entry.data, **entry.options}
     port = conf[CONF_PORT]
     baud = conf.get(CONF_BAUD, DEFAULT_BAUD)
     all_off_recall = conf.get(CONF_ALL_OFF_RECALL, False)
 
-    try:
-        nuvo = await hass.async_add_executor_job(get_nuvo, port, baud, all_off_recall)
-    except SerialException:
-        raise ConfigEntryNotReady(f"Cannot connect to serial port {port}")
+    # A network port (e.g. an ESPHome serial proxy) only exists while its
+    # device is connected, which on a
+    # restart can be after this entry is first set up. Wait for it instead of
+    # hammering a port that cannot be opened yet.
+    if not await _async_remote_port_available(hass, port):
+        raise ConfigEntryNotReady(f"Waiting for the device providing {port} to connect")
+
+    nuvo = await hass.async_add_executor_job(get_nuvo, port, baud, all_off_recall)
 
     model = await hass.async_add_executor_job(nuvo.get_model)
     if model == 'Unknown':
-        raise ConfigEntryNotReady("Cannot detect Nuvo model")
+        await hass.async_add_executor_job(nuvo.close)
+        raise ConfigEntryNotReady(f"Cannot detect Nuvo model on {port}")
 
-    _LOGGER.info('Detected Nuvo model %s', model)
+    _LOGGER.info('Detected Nuvo model %s on %s', model, port)
 
     zones = {int(k): v for k, v in conf[CONF_ZONES].items()}
     sources = {int(k): v[CONF_NAME] for k, v in conf[CONF_SOURCES].items()}
@@ -141,7 +192,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         zone_page_volumes.append(vol_val)
         _LOGGER.info("Page zone %d with volume %d%%", zone_id, vol_val)
 
-    hass.data[DOMAIN] = {
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         'nuvo': nuvo,
         CONF_PAGE_SOURCE: page_source,
         CONF_PAGE_VOLUME: page_volume_default,
@@ -154,40 +205,60 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ZONE_PAGE_VOLUME: zone_page_volumes,
     }
 
+    # The amplifier itself is a hub device; each zone is a child device of it
+    # (see zone_device_info) so zones keep their own short names and can be
+    # assigned to areas individually.
+    hub_device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=entry.title,
+        manufacturer='Nuvo',
+        model=model,
+    )
+    _HUB_DEVICE_IDS[entry.entry_id] = hub_device.id
+
+    # Migrate pre-multi-amp unique IDs (nuvo_simple_zone_X...) to the
+    # entry-scoped scheme so existing entities keep their history.
+    @callback
+    def _migrate_unique_id(entity_entry):
+        old = entity_entry.unique_id
+        if old and old.startswith(LEGACY_UNIQUE_ID_PREFIX):
+            return {'new_unique_id':
+                    f'{entry.entry_id}_zone_{old[len(LEGACY_UNIQUE_ID_PREFIX):]}'}
+        return None
+
+    await er.async_migrate_entries(hass, entry.entry_id, _migrate_unique_id)
+
     def service_handle(service):
-        """Handle for services."""
+        """Handle for services, applied to every configured amplifier."""
         _LOGGER.debug("Nuvo service handler called.")
-        _nuvo = hass.data[DOMAIN]['nuvo']
-        _page_source = hass.data[DOMAIN][CONF_PAGE_SOURCE]
-        _page_zones = hass.data[DOMAIN][PAGE_ZONES]
-        _page_volume = hass.data[DOMAIN][ZONE_PAGE_VOLUME]
+        for entry_data in list(hass.data.get(DOMAIN, {}).values()):
+            _nuvo = entry_data['nuvo']
+            _page_source = entry_data[CONF_PAGE_SOURCE]
+            _page_zones = entry_data[PAGE_ZONES]
+            _page_volume = entry_data[ZONE_PAGE_VOLUME]
 
-        if service.service == SERVICE_PAGE_OFF:
-            _LOGGER.info("Paging off service called.")
-            _nuvo.page_off(_page_source, _page_zones)
-            return
+            if service.service == SERVICE_PAGE_OFF:
+                _LOGGER.info("Paging off service called.")
+                _nuvo.page_off(_page_source, _page_zones)
 
-        if service.service == SERVICE_PAGE_ON:
-            _LOGGER.info("Paging on service called.")
-            volume_offset = int(service.data.get('volume_offset', 0))
-            adjusted_volume = [min(100, max(0, int(v) + volume_offset)) for v in _page_volume]
-            _nuvo.page_on(_page_source, _page_zones, adjusted_volume)
-            return
+            elif service.service == SERVICE_PAGE_ON:
+                _LOGGER.info("Paging on service called.")
+                volume_offset = int(service.data.get('volume_offset', 0))
+                adjusted_volume = [min(100, max(0, int(v) + volume_offset)) for v in _page_volume]
+                _nuvo.page_on(_page_source, _page_zones, adjusted_volume)
 
-        if service.service == SERVICE_MUTE:
-            _LOGGER.info("Mute All service called.")
-            _nuvo.mute_all()
-            return
+            elif service.service == SERVICE_MUTE:
+                _LOGGER.info("Mute All service called.")
+                _nuvo.mute_all()
 
-        if service.service == SERVICE_UNMUTE:
-            _LOGGER.info("Unmute All service called.")
-            _nuvo.unmute_all()
-            return
+            elif service.service == SERVICE_UNMUTE:
+                _LOGGER.info("Unmute All service called.")
+                _nuvo.unmute_all()
 
-        if service.service == SERVICE_ALL_OFF:
-            _LOGGER.info("All Off service called.")
-            _nuvo.all_off()
-            return
+            elif service.service == SERVICE_ALL_OFF:
+                _LOGGER.info("All Off service called.")
+                _nuvo.all_off()
 
     if not hass.services.has_service(DOMAIN, SERVICE_PAGE_ON):
         hass.services.async_register(DOMAIN, SERVICE_PAGE_ON, service_handle, schema=None)
@@ -196,35 +267,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_UNMUTE, service_handle, schema=None)
         hass.services.async_register(DOMAIN, SERVICE_ALL_OFF, service_handle, schema=None)
 
+    applied_options = dict(entry.options)
+
     async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-        await hass.config_entries.async_reload(entry.entry_id)
+        # Title-only updates (the options flow renaming the entry after a
+        # port change) land here too; reload only for real option changes so
+        # one save doesn't run two setups back to back.
+        if dict(entry.options) != applied_options:
+            await hass.config_entries.async_reload(entry.entry_id)
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Remove entities for zones that are no longer configured
-    valid_zone_ids = set(zones.keys())
-    expected_unique_ids = {'nuvo_simple_zone_0'}
-    for zone_id in valid_zone_ids:
+    # Remove entities for zones that are no longer configured on this entry
+    expected_unique_ids = {f'{entry.entry_id}_zone_0'}
+    for zone_id in zones:
         expected_unique_ids.update([
-            f'nuvo_simple_zone_{zone_id}',
-            f'nuvo_simple_zone_{zone_id}_bass',
-            f'nuvo_simple_zone_{zone_id}_treble',
-            f'nuvo_simple_zone_{zone_id}_volume_offset',
-            f'nuvo_simple_zone_{zone_id}_balance',
-            f'nuvo_simple_zone_{zone_id}_source_group',
-            f'nuvo_simple_zone_{zone_id}_volume_reset',
-            f'nuvo_simple_zone_{zone_id}_keypad_lock',
-            f'nuvo_simple_zone_{zone_id}_override',
+            f'{entry.entry_id}_zone_{zone_id}',
+            f'{entry.entry_id}_zone_{zone_id}_bass',
+            f'{entry.entry_id}_zone_{zone_id}_treble',
+            f'{entry.entry_id}_zone_{zone_id}_volume_offset',
+            f'{entry.entry_id}_zone_{zone_id}_balance',
+            f'{entry.entry_id}_zone_{zone_id}_source_group',
+            f'{entry.entry_id}_zone_{zone_id}_volume_reset',
+            f'{entry.entry_id}_zone_{zone_id}_keypad_lock',
+            f'{entry.entry_id}_zone_{zone_id}_override',
         ])
 
     entity_registry = er.async_get(hass)
-    for entity_entry in list(entity_registry.entities.values()):
-        if (entity_entry.unique_id
-                and isinstance(entity_entry.unique_id, str)
-                and entity_entry.unique_id.startswith('nuvo_simple_zone_')
-                and entity_entry.unique_id not in expected_unique_ids):
+    for entity_entry in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        if entity_entry.unique_id not in expected_unique_ids:
             _LOGGER.info("Removing stale entity: %s", entity_entry.entity_id)
             entity_registry.async_remove(entity_entry.entity_id)
 
@@ -233,12 +306,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    nuvo = hass.data.get(DOMAIN, {}).get('nuvo')
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        if nuvo:
-            await hass.async_add_executor_job(nuvo.close)
-        hass.data.pop(DOMAIN, None)
-        for svc in [SERVICE_PAGE_ON, SERVICE_PAGE_OFF, SERVICE_MUTE, SERVICE_UNMUTE, SERVICE_ALL_OFF]:
-            hass.services.async_remove(DOMAIN, svc)
+        _HUB_DEVICE_IDS.pop(entry.entry_id, None)
+        data = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        if data and data.get('nuvo'):
+            await hass.async_add_executor_job(data['nuvo'].close)
+        if not hass.data.get(DOMAIN):
+            for svc in [SERVICE_PAGE_ON, SERVICE_PAGE_OFF, SERVICE_MUTE, SERVICE_UNMUTE, SERVICE_ALL_OFF]:
+                hass.services.async_remove(DOMAIN, svc)
     return unload_ok
